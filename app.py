@@ -211,27 +211,37 @@ with col2:
 # -----------------------------
 # Spend Histogram
 # -----------------------------
-stats['Spend_range'] = pd.cut(
-    stats['6mos Spend'],
-    bins=np.linspace(stats['6mos Spend'].min(), stats['6mos Spend'].max(), 11)
-)
-bin_labels = [str(b) for b in stats['Spend_range'].cat.categories]
+# -----------------------------
+# Spend Histogram (Fixed Bins for Deployment)
+# -----------------------------
+min_spend = stats['6mos Spend'].min()
+max_spend = stats['6mos Spend'].max()
+bin_count = 10  # 10 bins
+
+# Create fixed bins
+bins = np.linspace(min_spend, max_spend, bin_count + 1)
+labels = [f"{int(bins[i]):,} - {int(bins[i+1]):,}" for i in range(len(bins)-1)]
+
+stats['Spend_range'] = pd.cut(stats['6mos Spend'], bins=bins, labels=labels, include_lowest=True)
 
 fig2 = px.histogram(
     stats,
     x='6mos Spend',
-    nbins=40,
+    nbins=bin_count,
     color='Spend_range',
-    category_orders={"Spend_range": bin_labels},
-    color_discrete_sequence=px.colors.sequential.Viridis
+    category_orders={"Spend_range": labels},
+    color_discrete_sequence=px.colors.sequential.Viridis,
+    range_x=[min_spend, max_spend]  # lock x-axis
 )
 fig2.update_layout(
     title_text='Customer Spending Patterns',
     title_x=0.2,
     xaxis_title='6mos Spend (₹)',
-    yaxis_title='Customers'
+    yaxis_title='Customers',
+    xaxis=dict(tickformat=",.0f")
 )
 st.plotly_chart(fig2, use_container_width=True)
+
 
 # -----------------------------
 # State-wise Bar
