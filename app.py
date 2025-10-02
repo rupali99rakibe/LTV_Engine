@@ -105,8 +105,8 @@ def growth_indicator(value):
 rfm = simple_rfm(filtered_df)
 stats = pd.concat([filtered_df.reset_index(drop=True), rfm.reset_index(drop=True)], axis=1)
 stats['churn_risk'] = churn_risk(stats['rfm_score'])
-stats['LTV_6m'] = stats.apply(lambda r: heuristic_ltv(r,6), axis=1)
-stats['LTV_12m'] = stats.apply(lambda r: heuristic_ltv(r,12), axis=1)
+stats['6mos Spend'] = stats.apply(lambda r: heuristic_ltv(r,6), axis=1)
+stats['LTV_12mos'] = stats.apply(lambda r: heuristic_ltv(r,12), axis=1)
 
 # Customer segmentation
 stats['segment'] = np.select(
@@ -136,27 +136,27 @@ monthly = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({
     'Customer ID': 'nunique',
     'Orders': 'mean',
     'Last Order Amount': 'mean',
-    'LTV_6m': 'sum'
+    '6mos Spend': 'sum'
 }).reset_index()
 
 total_customers = stats.shape[0]
 avg_orders = stats['Orders'].mean()
 avg_aov = stats['Last Order Amount'].mean()
-total_ltv_6m = stats['LTV_6m'].sum()
+total_spend_6mos = stats['6mos Spend'].sum()
 
 if len(monthly) >= 2:
     latest, prev = monthly.iloc[-1], monthly.iloc[-2]
     growth_customers = (latest['Customer ID'] - prev['Customer ID']) / prev['Customer ID'] if prev['Customer ID'] else 0
     growth_orders = (latest['Orders'] - prev['Orders']) / prev['Orders'] if prev['Orders'] else 0
     growth_aov = (latest['Last Order Amount'] - prev['Last Order Amount']) / prev['Last Order Amount'] if prev['Last Order Amount'] else 0
-    growth_ltv = (latest['LTV_6m'] - prev['LTV_6m']) / prev['LTV_6m'] if prev['LTV_6m'] else 0
+    growth_spend = (latest['6mos Spend'] - prev['6mos Spend']) / prev['6mos Spend'] if prev['6mos Spend'] else 0
 else:
-    growth_customers = growth_orders = growth_aov = growth_ltv = 0
+    growth_customers = growth_orders = growth_aov = growth_spend = 0
 
 monthly_customers = monthly['Customer ID'].tolist() if len(monthly) >= 2 else [total_customers]
 monthly_orders = monthly['Orders'].tolist() if len(monthly) >= 2 else [avg_orders]
 monthly_aov = monthly['Last Order Amount'].tolist() if len(monthly) >= 2 else [avg_aov]
-monthly_ltv = monthly['LTV_6m'].tolist() if len(monthly) >= 2 else [total_ltv_6m]
+monthly_spend = monthly['6mos Spend'].tolist() if len(monthly) >= 2 else [total_spend_6mos]
 
 # -----------------------------
 # KPI Cards
@@ -191,8 +191,8 @@ with c3:
     st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-spend'>💰</div><div class='kpi-title'>Avg Spend</div><div class='kpi-value'>{format_currency(avg_aov)}</div><div class='kpi-growth'>{growth_indicator(growth_aov)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
 
 with c4:
-    spark_html = sparkline(monthly_ltv,"#2ECC71")
-    st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-revenue'>📈</div><div class='kpi-title'>Estimated Revenue</div><div class='kpi-value'>{format_currency(total_ltv_6m)}</div><div class='kpi-growth'>{growth_indicator(growth_ltv)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
+    spark_html = sparkline(monthly_spend,"#2ECC71")
+    st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-revenue'>📈</div><div class='kpi-title'>6mos Spend (Estimated Revenue)</div><div class='kpi-value'>{format_currency(total_spend_6mos)}</div><div class='kpi-growth'>{growth_indicator(growth_spend)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
 
 # -----------------------------
 # Churn Pie & Segment Bar
@@ -209,34 +209,51 @@ with col2:
     st.plotly_chart(plot_bar(seg_counts,'Customer Segment Counts',color_map), use_container_width=True)
 
 # -----------------------------
-# LTV Histogram
+# Spend Histogram
 # -----------------------------
-stats['LTV_bin'] = pd.cut(stats['LTV_6m'], bins=10)
-fig2 = px.histogram(stats, x='LTV_6m', nbins=40, color='LTV_bin', color_discrete_sequence=px.colors.sequential.Viridis)
-fig2.update_layout(title_text='LTV Distribution', title_x=0.2, xaxis_title='LTV (₹)', yaxis_title='Number of Customers')
+stats['Spend_range'] = pd.cut(
+    stats['6mos Spend'],
+    bins=np.linspace(stats['6mos Spend'].min(), stats['6mos Spend'].max(), 11)
+)
+bin_labels = [str(b) for b in stats['Spend_range'].cat.categories]
+
+fig2 = px.histogram(
+    stats,
+    x='6mos Spend',
+    nbins=40,
+    color='Spend_range',
+    category_orders={"Spend_range": bin_labels},
+    color_discrete_sequence=px.colors.sequential.Viridis
+)
+fig2.update_layout(
+    title_text='Customer Spending Patterns',
+    title_x=0.2,
+    xaxis_title='6mos Spend (₹)',
+    yaxis_title='Customers'
+)
 st.plotly_chart(fig2, use_container_width=True)
 
 # -----------------------------
 # State-wise Bar
 # -----------------------------
 if 'State' in stats.columns:
-    geo = stats.groupby('State').agg({'Customer ID':'count','LTV_6m':'sum'}).rename(columns={'Customer ID':'Customers'}).reset_index()
-    fig4 = px.bar(geo, x='State', y='Customers', color='LTV_6m', text='Customers', color_continuous_scale='Viridis', height=400)
+    geo = stats.groupby('State').agg({'Customer ID':'count','6mos Spend':'sum'}).rename(columns={'Customer ID':'Customers'}).reset_index()
+    fig4 = px.bar(geo, x='State', y='Customers', color='6mos Spend', text='Customers', color_continuous_scale='Viridis', height=400)
     fig4.update_layout(title_text='State-wise Customers', title_x=0.2, xaxis_title='State', yaxis_title='Number of Customers')
     st.plotly_chart(fig4, use_container_width=True)
 
 # -----------------------------
-# Orders & LTV Trends Over Time
+# Orders & Spend Trends Over Time
 # -----------------------------
-time_series = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({'Orders':'sum','LTV_6m':'sum'}).reset_index()
+time_series = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({'Orders':'sum','6mos Spend':'sum'}).reset_index()
 col1,col2 = st.columns(2)
 with col1:
-    fig_ltv = px.line(time_series, x='Last Purchase Date', y='LTV_6m', title='Total LTV Trend Over Time', markers=True)
-    fig_ltv.update_layout(xaxis_title='Month', yaxis_title='Total LTV (₹)')
-    st.plotly_chart(fig_ltv, use_container_width=True)
+    fig_spend = px.line(time_series, x='Last Purchase Date', y='6mos Spend', title='Total 6mos Spend Trend Over Time', markers=True)
+    fig_spend.update_layout(xaxis_title='Year', yaxis_title='Total Spend (₹)')
+    st.plotly_chart(fig_spend, use_container_width=True)
 with col2:
     fig_orders = px.line(time_series, x='Last Purchase Date', y='Orders', title='Total Orders Trend Over Time', markers=True)
-    fig_orders.update_layout(xaxis_title='Month', yaxis_title='Total Orders')
+    fig_orders.update_layout(xaxis_title='Year', yaxis_title='Total Orders')
     st.plotly_chart(fig_orders, use_container_width=True)
 
 # -----------------------------
