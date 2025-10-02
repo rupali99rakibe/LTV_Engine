@@ -192,7 +192,7 @@ with c3:
 
 with c4:
     spark_html = sparkline(monthly_spend,"#2ECC71")
-    st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-revenue'>📈</div><div class='kpi-title'>6mos Spend (Estimated Revenue)</div><div class='kpi-value'>{format_currency(total_spend_6mos)}</div><div class='kpi-growth'>{growth_indicator(growth_spend)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-revenue'>📈</div><div class='kpi-title'>6mos Spend </div><div class='kpi-value'>{format_currency(total_spend_6mos)}</div><div class='kpi-growth'>{growth_indicator(growth_spend)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
 
 # -----------------------------
 # Churn Pie & Segment Bar
