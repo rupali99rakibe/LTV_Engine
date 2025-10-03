@@ -31,26 +31,26 @@ filtered_df['Purchase_Year'] = filtered_df['Last Purchase Date'].dt.year
 filtered_df['Purchase_Month'] = filtered_df['Last Purchase Date'].dt.month
 months_dict = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'}
 
-# Standard filters
-for f in ['State', 'District', 'Fashion Segment', 'Customer Name', 'Customer ID']:
+# Standard filters (Added Gender here)
+for f in ['State', 'District', 'Fashion Segment', 'Customer Name', 'Customer ID', 'Gender']:
     if f in filtered_df.columns:
         options = ['All'] + sorted(filtered_df[f].dropna().unique().tolist())
         sel = st.sidebar.selectbox(f, options)
         if sel != 'All':
-            filtered_df = filtered_df[filtered_df[f]==sel]
+            filtered_df = filtered_df[filtered_df[f] == sel]
 
 # Year filter
 years = ['All'] + sorted(filtered_df['Purchase_Year'].dropna().unique().tolist())
 sel_year = st.sidebar.selectbox('Year', years)
 if sel_year != 'All':
-    filtered_df = filtered_df[filtered_df['Purchase_Year']==sel_year]
+    filtered_df = filtered_df[filtered_df['Purchase_Year'] == sel_year]
 
 # Month filter
 month_options = ['All'] + [months_dict[m] for m in sorted(filtered_df['Purchase_Month'].dropna().unique())]
 sel_month = st.sidebar.selectbox('Month', month_options)
 if sel_month != 'All':
-    sel_month_num = [k for k,v in months_dict.items() if v==sel_month][0]
-    filtered_df = filtered_df[filtered_df['Purchase_Month']==sel_month_num]
+    sel_month_num = [k for k,v in months_dict.items() if v == sel_month][0]
+    filtered_df = filtered_df[filtered_df['Purchase_Month'] == sel_month_num]
 
 # -----------------------------
 # Helper Functions
