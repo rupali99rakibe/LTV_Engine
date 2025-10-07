@@ -79,7 +79,7 @@ def format_currency(x):
 
 # Axis style
 axis_style = dict(
-    titlefont=dict(color='black'),
+    title=dict(font=dict(color='black')),
     tickfont=dict(color='black')
 )
 
@@ -89,11 +89,10 @@ axis_style = dict(
 def plot_pie(data, title, colors):
     fig = go.Figure(go.Pie(labels=data.index, values=data.values, hole=0.4, marker_colors=colors))
     fig.update_layout(
-        title_text=title,
+        title=dict(text=title, font=dict(color='black')),
         title_x=0.2,
         legend=dict(orientation="h", y=-0.1, font=dict(color='black')),
-        legend_title=dict(text="Segments", font=dict(color='black')),
-        font=dict(color='black')
+        legend_title=dict(text="Segments", font=dict(color='black'))
     )
     return fig
 
@@ -107,7 +106,7 @@ def plot_bar(data, title, color_map=None):
         height=400
     )
     fig.update_layout(
-        title_text=title,
+        title=dict(text=title, font=dict(color='black')),
         title_x=0.2,
         xaxis_title='',
         yaxis_title='Count',
@@ -252,14 +251,15 @@ fig2 = px.histogram(
     color_discrete_sequence=px.colors.sequential.Viridis
 )
 fig2.update_layout(
-    title_text='Customer Spending Patterns',
+    title=dict(text='Customer Spending Patterns', font=dict(color='black')),
     title_x=0.2,
     xaxis_title='6mos Spend (₹)',
     yaxis_title='Customers',
-    legend_title=dict(text="Spend Range", font=dict(color='black')),
-    legend=dict(font=dict(color='black'))
+    xaxis=axis_style,
+    yaxis=axis_style,
+    legend=dict(font=dict(color='black')),
+    legend_title=dict(text="Spend Range", font=dict(color='black'))
 )
-fig2.update_layout(xaxis=axis_style, yaxis=axis_style)
 st.plotly_chart(fig2, use_container_width=True)
 
 # -----------------------------
@@ -280,21 +280,21 @@ if 'State' in stats.columns:
     )
     
     fig4.update_layout(
-        title_text='State-wise Customers',
+        title=dict(text='State-wise Customers', font=dict(color='black', size=16)),
         title_x=0.2,
         xaxis_title='State',
         yaxis_title='Number of Customers',
-        legend_title=dict(text="6mos Spend", font=dict(color='black')),  # black legend title
-        legend=dict(font=dict(color='black')),  # black legend labels (for discrete legends)
         xaxis=axis_style,
         yaxis=axis_style,
-        title_font=dict(color='black', size=16)
+        legend=dict(font=dict(color='black')),
+        legend_title=dict(text="6mos Spend", font=dict(color='black'))
     )
 
-    # ✅ Make colorbar (continuous legend) title & labels black
     fig4.update_coloraxes(
-        colorbar_title=dict(font=dict(color='black')),
-        colorbar_tickfont=dict(color='black')
+        colorbar=dict(
+            title=dict(font=dict(color='black')),
+            tickfont=dict(color='black')
+        )
     )
 
     st.plotly_chart(fig4, use_container_width=True)
@@ -307,21 +307,23 @@ col1,col2 = st.columns(2)
 with col1:
     fig_spend = px.line(time_series, x='Last Purchase Date', y='6mos Spend', title='Total 6mos Spend Trend Over Time', markers=True)
     fig_spend.update_layout(
+        title=dict(text='Total 6mos Spend Trend Over Time', font=dict(color='black')),
         xaxis_title='Year', yaxis_title='Total Spend (₹)',
-        legend_title=dict(text="Legend", font=dict(color='black')),
-        legend=dict(font=dict(color='black'))
+        xaxis=axis_style, yaxis=axis_style,
+        legend=dict(font=dict(color='black')),
+        legend_title=dict(text="Legend", font=dict(color='black'))
     )
-    fig_spend.update_layout(xaxis=axis_style, yaxis=axis_style)
     st.plotly_chart(fig_spend, use_container_width=True)
 
 with col2:
     fig_orders = px.line(time_series, x='Last Purchase Date', y='Orders', title='Total Orders Trend Over Time', markers=True)
     fig_orders.update_layout(
+        title=dict(text='Total Orders Trend Over Time', font=dict(color='black')),
         xaxis_title='Year', yaxis_title='Total Orders',
-        legend_title=dict(text="Legend", font=dict(color='black')),
-        legend=dict(font=dict(color='black'))
+        xaxis=axis_style, yaxis=axis_style,
+        legend=dict(font=dict(color='black')),
+        legend_title=dict(text="Legend", font=dict(color='black'))
     )
-    fig_orders.update_layout(xaxis=axis_style, yaxis=axis_style)
     st.plotly_chart(fig_orders, use_container_width=True)
 
 # -----------------------------
@@ -331,12 +333,12 @@ product_col = 'Product' if 'Product' in stats.columns else 'Fashion Segment'
 product_trend = stats.groupby([pd.Grouper(key='Last Purchase Date', freq='M'), product_col]).agg({'Orders':'sum'}).reset_index()
 fig_prod = px.line(product_trend, x='Last Purchase Date', y='Orders', color=product_col, title=f'{product_col} Orders Trend Over Time', markers=True)
 fig_prod.update_layout(
-    xaxis_title='Month',
-    yaxis_title='Total Orders',
-    legend_title=dict(text=product_col, font=dict(color='black')),
-    legend=dict(font=dict(color='black'))
+    title=dict(text=f'{product_col} Orders Trend Over Time', font=dict(color='black')),
+    xaxis_title='Month', yaxis_title='Total Orders',
+    xaxis=axis_style, yaxis=axis_style,
+    legend=dict(font=dict(color='black')),
+    legend_title=dict(text=product_col, font=dict(color='black'))
 )
-fig_prod.update_layout(xaxis=axis_style, yaxis=axis_style)
 st.plotly_chart(fig_prod, use_container_width=True)
 
 # -----------------------------
