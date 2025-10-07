@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -25,13 +25,11 @@ df['Last Purchase Date'] = pd.to_datetime(df['Last Purchase Date'], errors='coer
 # Sidebar Filters
 # -----------------------------
 filtered_df = df.copy()
-
-# Add Year & Month columns
 filtered_df['Purchase_Year'] = filtered_df['Last Purchase Date'].dt.year
 filtered_df['Purchase_Month'] = filtered_df['Last Purchase Date'].dt.month
 months_dict = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'}
 
-# Standard filters (Added Gender here)
+# Add sidebar filters
 for f in ['State', 'District', 'Fashion Segment', 'Customer Name', 'Customer ID', 'Gender']:
     if f in filtered_df.columns:
         options = ['All'] + sorted(filtered_df[f].dropna().unique().tolist())
@@ -79,14 +77,46 @@ def format_currency(x):
     elif x >= 1e3: return f"₹{x/1e3:.2f} K"
     else: return f"₹{x:.0f}"
 
+# Axis style
+axis_style = dict(
+    titlefont=dict(color='black'),
+    tickfont=dict(color='black')
+)
+
+# -----------------------------
+# Plot Functions
+# -----------------------------
 def plot_pie(data, title, colors):
     fig = go.Figure(go.Pie(labels=data.index, values=data.values, hole=0.4, marker_colors=colors))
-    fig.update_layout(title_text=title, title_x=0.2, legend=dict(orientation="h", y=-0.1))
+    fig.update_layout(
+        title_text=title,
+        title_x=0.2,
+        legend=dict(orientation="h", y=-0.1, font=dict(color='black')),
+        legend_title=dict(text="Segments", font=dict(color='black')),
+        font=dict(color='black')
+    )
     return fig
 
 def plot_bar(data, title, color_map=None):
-    fig = px.bar(x=data.index, y=data.values, text=data.values, color=data.index, color_discrete_map=color_map, height=400)
-    fig.update_layout(title_text=title, title_x=0.2, xaxis_title='', yaxis_title='Count', bargap=0.3)
+    fig = px.bar(
+        x=data.index,
+        y=data.values,
+        text=data.values,
+        color=data.index,
+        color_discrete_map=color_map,
+        height=400
+    )
+    fig.update_layout(
+        title_text=title,
+        title_x=0.2,
+        xaxis_title='',
+        yaxis_title='Count',
+        bargap=0.3,
+        xaxis=axis_style,
+        yaxis=axis_style,
+        legend_title=dict(text="Category", font=dict(color='black')),
+        legend=dict(font=dict(color='black'))
+    )
     return fig
 
 def sparkline(data, color):
@@ -117,7 +147,6 @@ stats['segment'] = np.select(
     default='Other'
 )
 
-# Segment subsets
 segments_dict = {
     "Loyal": stats[stats['segment']=='Loyal'][['Customer ID','Customer Name']],
     "At-Risk": stats[stats['segment']=='At-Risk'][['Customer ID','Customer Name']],
@@ -130,7 +159,26 @@ segments_dict = {
 palette = {'background':'#ffffff','text':'#2C3E50','highlight':'#34495E'}
 
 # -----------------------------
-# Compute Monthly Trends for Sparklines
+# KPI Cards
+# -----------------------------
+kpi_style = f"""
+<style>
+.kpi-card {{ background-color: {palette['background']}; color: {palette['text']}; padding:20px; border-radius:12px; text-align:center; box-shadow:0 4px 8px rgba(0,0,0,0.1); }}
+.kpi-icon {{ font-size:28px; margin-bottom:6px; }}
+.kpi-title {{ font-size:16px; font-weight:600; color:{palette['highlight']}; margin-bottom:6px; }}
+.kpi-value {{ font-size:22px; font-weight:bold; }}
+.kpi-growth {{ font-size:14px; margin-top:4px; }}
+.kpi-sparkline {{ margin-top:6px; }}
+.icon-customers {{ color: #3498DB; }}
+.icon-orders {{ color: #9B59B6; }}
+.icon-spend {{ color: #F39C12; }}
+.icon-revenue {{ color: #2ECC71; }}
+</style>
+"""
+st.markdown(kpi_style, unsafe_allow_html=True)
+
+# -----------------------------
+# Monthly Trends & KPIs
 # -----------------------------
 monthly = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({
     'Customer ID': 'nunique',
@@ -158,38 +206,17 @@ monthly_orders = monthly['Orders'].tolist() if len(monthly) >= 2 else [avg_order
 monthly_aov = monthly['Last Order Amount'].tolist() if len(monthly) >= 2 else [avg_aov]
 monthly_spend = monthly['6mos Spend'].tolist() if len(monthly) >= 2 else [total_spend_6mos]
 
-# -----------------------------
-# KPI Cards
-# -----------------------------
-kpi_style = f"""
-<style>
-.kpi-card {{ background-color: {palette['background']}; color: {palette['text']}; padding:20px; border-radius:12px; text-align:center; box-shadow:0 4px 8px rgba(0,0,0,0.1); }}
-.kpi-icon {{ font-size:28px; margin-bottom:6px; }}
-.kpi-title {{ font-size:16px; font-weight:600; color:{palette['highlight']}; margin-bottom:6px; }}
-.kpi-value {{ font-size:22px; font-weight:bold; }}
-.kpi-growth {{ font-size:14px; margin-top:4px; }}
-.kpi-sparkline {{ margin-top:6px; }}
-.icon-customers {{ color: #3498DB; }}
-.icon-orders {{ color: #9B59B6; }}
-.icon-spend {{ color: #F39C12; }}
-.icon-revenue {{ color: #2ECC71; }}
-</style>
-"""
-st.markdown(kpi_style, unsafe_allow_html=True)
+# KPI cards
 c1,c2,c3,c4 = st.columns([1.5,1.5,1.5,2])
-
 with c1:
     spark_html = sparkline(monthly_customers,"#3498DB")
     st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-customers'>👥</div><div class='kpi-title'>Total Customers</div><div class='kpi-value'>{total_customers:,}</div><div class='kpi-growth'>{growth_indicator(growth_customers)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
-
 with c2:
     spark_html = sparkline(monthly_orders,"#9B59B6")
     st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-orders'>📦</div><div class='kpi-title'>Avg Orders</div><div class='kpi-value'>{avg_orders:.2f}</div><div class='kpi-growth'>{growth_indicator(growth_orders)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
-
 with c3:
     spark_html = sparkline(monthly_aov,"#F39C12")
     st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-spend'>💰</div><div class='kpi-title'>Avg Spend</div><div class='kpi-value'>{format_currency(avg_aov)}</div><div class='kpi-growth'>{growth_indicator(growth_aov)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
-
 with c4:
     spark_html = sparkline(monthly_spend,"#2ECC71")
     st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-revenue'>📈</div><div class='kpi-title'>6mos Spend </div><div class='kpi-value'>{format_currency(total_spend_6mos)}</div><div class='kpi-growth'>{growth_indicator(growth_spend)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
@@ -216,7 +243,6 @@ stats['Spend_range'] = pd.cut(
     bins=np.linspace(stats['6mos Spend'].min(), stats['6mos Spend'].max(), 11)
 )
 bin_labels = [str(b) for b in stats['Spend_range'].cat.categories]
-
 fig2 = px.histogram(
     stats,
     x='6mos Spend',
@@ -229,31 +255,73 @@ fig2.update_layout(
     title_text='Customer Spending Patterns',
     title_x=0.2,
     xaxis_title='6mos Spend (₹)',
-    yaxis_title='Customers'
+    yaxis_title='Customers',
+    legend_title=dict(text="Spend Range", font=dict(color='black')),
+    legend=dict(font=dict(color='black'))
 )
+fig2.update_layout(xaxis=axis_style, yaxis=axis_style)
 st.plotly_chart(fig2, use_container_width=True)
 
 # -----------------------------
 # State-wise Bar
 # -----------------------------
-if 'State' in stats.columns:
-    geo = stats.groupby('State').agg({'Customer ID':'count','6mos Spend':'sum'}).rename(columns={'Customer ID':'Customers'}).reset_index()
-    fig4 = px.bar(geo, x='State', y='Customers', color='6mos Spend', text='Customers', color_continuous_scale='Viridis', height=400)
-    fig4.update_layout(title_text='State-wise Customers', title_x=0.2, xaxis_title='State', yaxis_title='Number of Customers')
+if 'State' in stats.columns: 
+    geo = stats.groupby('State').agg({'Customer ID': 'count', '6mos Spend': 'sum'}) \
+        .rename(columns={'Customer ID': 'Customers'}).reset_index()
+    
+    fig4 = px.bar(
+        geo,
+        x='State',
+        y='Customers',
+        color='6mos Spend',
+        text='Customers',
+        color_continuous_scale='Viridis',
+        height=400
+    )
+    
+    fig4.update_layout(
+        title_text='State-wise Customers',
+        title_x=0.2,
+        xaxis_title='State',
+        yaxis_title='Number of Customers',
+        legend_title=dict(text="6mos Spend", font=dict(color='black')),  # black legend title
+        legend=dict(font=dict(color='black')),  # black legend labels (for discrete legends)
+        xaxis=axis_style,
+        yaxis=axis_style,
+        title_font=dict(color='black', size=16)
+    )
+
+    # ✅ Make colorbar (continuous legend) title & labels black
+    fig4.update_coloraxes(
+        colorbar_title=dict(font=dict(color='black')),
+        colorbar_tickfont=dict(color='black')
+    )
+
     st.plotly_chart(fig4, use_container_width=True)
 
 # -----------------------------
-# Orders & Spend Trends Over Time
+# Orders & Spend Trends
 # -----------------------------
 time_series = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({'Orders':'sum','6mos Spend':'sum'}).reset_index()
 col1,col2 = st.columns(2)
 with col1:
     fig_spend = px.line(time_series, x='Last Purchase Date', y='6mos Spend', title='Total 6mos Spend Trend Over Time', markers=True)
-    fig_spend.update_layout(xaxis_title='Year', yaxis_title='Total Spend (₹)')
+    fig_spend.update_layout(
+        xaxis_title='Year', yaxis_title='Total Spend (₹)',
+        legend_title=dict(text="Legend", font=dict(color='black')),
+        legend=dict(font=dict(color='black'))
+    )
+    fig_spend.update_layout(xaxis=axis_style, yaxis=axis_style)
     st.plotly_chart(fig_spend, use_container_width=True)
+
 with col2:
     fig_orders = px.line(time_series, x='Last Purchase Date', y='Orders', title='Total Orders Trend Over Time', markers=True)
-    fig_orders.update_layout(xaxis_title='Year', yaxis_title='Total Orders')
+    fig_orders.update_layout(
+        xaxis_title='Year', yaxis_title='Total Orders',
+        legend_title=dict(text="Legend", font=dict(color='black')),
+        legend=dict(font=dict(color='black'))
+    )
+    fig_orders.update_layout(xaxis=axis_style, yaxis=axis_style)
     st.plotly_chart(fig_orders, use_container_width=True)
 
 # -----------------------------
@@ -262,7 +330,13 @@ with col2:
 product_col = 'Product' if 'Product' in stats.columns else 'Fashion Segment'
 product_trend = stats.groupby([pd.Grouper(key='Last Purchase Date', freq='M'), product_col]).agg({'Orders':'sum'}).reset_index()
 fig_prod = px.line(product_trend, x='Last Purchase Date', y='Orders', color=product_col, title=f'{product_col} Orders Trend Over Time', markers=True)
-fig_prod.update_layout(xaxis_title='Month', yaxis_title='Total Orders')
+fig_prod.update_layout(
+    xaxis_title='Month',
+    yaxis_title='Total Orders',
+    legend_title=dict(text=product_col, font=dict(color='black')),
+    legend=dict(font=dict(color='black'))
+)
+fig_prod.update_layout(xaxis=axis_style, yaxis=axis_style)
 st.plotly_chart(fig_prod, use_container_width=True)
 
 # -----------------------------
