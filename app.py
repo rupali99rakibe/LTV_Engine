@@ -77,7 +77,6 @@ def format_currency(x):
     elif x >= 1e3: return f"₹{x/1e3:.2f} K"
     else: return f"₹{x:.0f}"
 
-# Axis style
 axis_style = dict(
     title=dict(font=dict(color='black')),
     tickfont=dict(color='black')
@@ -134,7 +133,7 @@ def growth_indicator(value):
 rfm = simple_rfm(filtered_df)
 stats = pd.concat([filtered_df.reset_index(drop=True), rfm.reset_index(drop=True)], axis=1)
 stats['churn_risk'] = churn_risk(stats['rfm_score'])
-stats['6mos Spend'] = stats.apply(lambda r: heuristic_ltv(r,6), axis=1)
+stats['Total_Spend'] = stats.apply(lambda r: heuristic_ltv(r,6), axis=1) # Updated here
 stats['LTV_12mos'] = stats.apply(lambda r: heuristic_ltv(r,12), axis=1)
 
 # Customer segmentation
@@ -160,6 +159,16 @@ palette = {'background':'#ffffff','text':'#2C3E50','highlight':'#34495E'}
 # -----------------------------
 # KPI Cards
 # -----------------------------
+st.markdown("### Key Business Highlights")
+st.markdown("""
+These cards show important business performance numbers:
+- **Total Customers** → How many customers are active in our data.  
+- **Average Orders** → The average number of orders per customer.  
+- **Average Spend** → How much an average customer spends.  
+- **Total Spend** → Total customer spending (based on heuristic LTV).  
+The small trend line shows whether these values are going up or down.
+""") # Updated description
+
 kpi_style = f"""
 <style>
 .kpi-card {{ background-color: {palette['background']}; color: {palette['text']}; padding:20px; border-radius:12px; text-align:center; box-shadow:0 4px 8px rgba(0,0,0,0.1); }}
@@ -183,29 +192,28 @@ monthly = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({
     'Customer ID': 'nunique',
     'Orders': 'mean',
     'Last Order Amount': 'mean',
-    '6mos Spend': 'sum'
+    'Total_Spend': 'sum' # Updated here
 }).reset_index()
 
 total_customers = stats.shape[0]
 avg_orders = stats['Orders'].mean()
 avg_aov = stats['Last Order Amount'].mean()
-total_spend_6mos = stats['6mos Spend'].sum()
+total_spend_val = stats['Total_Spend'].sum() # Updated here
 
 if len(monthly) >= 2:
     latest, prev = monthly.iloc[-1], monthly.iloc[-2]
     growth_customers = (latest['Customer ID'] - prev['Customer ID']) / prev['Customer ID'] if prev['Customer ID'] else 0
     growth_orders = (latest['Orders'] - prev['Orders']) / prev['Orders'] if prev['Orders'] else 0
     growth_aov = (latest['Last Order Amount'] - prev['Last Order Amount']) / prev['Last Order Amount'] if prev['Last Order Amount'] else 0
-    growth_spend = (latest['6mos Spend'] - prev['6mos Spend']) / prev['6mos Spend'] if prev['6mos Spend'] else 0
+    growth_spend = (latest['Total_Spend'] - prev['Total_Spend']) / prev['Total_Spend'] if prev['Total_Spend'] else 0 # Updated here
 else:
     growth_customers = growth_orders = growth_aov = growth_spend = 0
 
 monthly_customers = monthly['Customer ID'].tolist() if len(monthly) >= 2 else [total_customers]
 monthly_orders = monthly['Orders'].tolist() if len(monthly) >= 2 else [avg_orders]
 monthly_aov = monthly['Last Order Amount'].tolist() if len(monthly) >= 2 else [avg_aov]
-monthly_spend = monthly['6mos Spend'].tolist() if len(monthly) >= 2 else [total_spend_6mos]
+monthly_spend = monthly['Total_Spend'].tolist() if len(monthly) >= 2 else [total_spend_val] # Updated here
 
-# KPI cards
 c1,c2,c3,c4 = st.columns([1.5,1.5,1.5,2])
 with c1:
     spark_html = sparkline(monthly_customers,"#3498DB")
@@ -218,11 +226,18 @@ with c3:
     st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-spend'>💰</div><div class='kpi-title'>Avg Spend</div><div class='kpi-value'>{format_currency(avg_aov)}</div><div class='kpi-growth'>{growth_indicator(growth_aov)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
 with c4:
     spark_html = sparkline(monthly_spend,"#2ECC71")
-    st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-revenue'>📈</div><div class='kpi-title'>6mos Spend </div><div class='kpi-value'>{format_currency(total_spend_6mos)}</div><div class='kpi-growth'>{growth_indicator(growth_spend)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi-card'><div class='kpi-icon icon-revenue'>📈</div><div class='kpi-title'>Total Spend </div><div class='kpi-value'>{format_currency(total_spend_val)}</div><div class='kpi-growth'>{growth_indicator(growth_spend)}</div><div class='kpi-sparkline'>{spark_html}</div></div>", unsafe_allow_html=True) # Updated display title
 
 # -----------------------------
 # Churn Pie & Segment Bar
 # -----------------------------
+st.markdown("### Customer Risk and Loyalty Overview")
+st.markdown("""
+- **Left Chart (Pie):** Shows which customers are safe (Low risk), need attention (Medium), or likely to stop buying (High).  
+- **Right Chart (Bar):** Groups customers by loyalty: Loyal (repeat buyers), At-Risk (might churn), One-Timer (bought once).  
+These visuals help you see which customer group needs action.
+""")
+
 col1,col2 = st.columns(2)
 with col1:
     churn_counts = stats['churn_risk'].value_counts().reindex(['Low','Medium','High']).fillna(0)
@@ -237,14 +252,20 @@ with col2:
 # -----------------------------
 # Spend Histogram
 # -----------------------------
+st.markdown("### Spending Patterns")
+st.markdown("""
+This chart shows how much customers spend in total.  
+It helps identify if most people are low, medium, or high spenders.
+""") # Updated description
+
 stats['Spend_range'] = pd.cut(
-    stats['6mos Spend'],
-    bins=np.linspace(stats['6mos Spend'].min(), stats['6mos Spend'].max(), 11)
+    stats['Total_Spend'], # Updated here
+    bins=np.linspace(stats['Total_Spend'].min(), stats['Total_Spend'].max(), 11) # Updated here
 )
 bin_labels = [str(b) for b in stats['Spend_range'].cat.categories]
 fig2 = px.histogram(
     stats,
-    x='6mos Spend',
+    x='Total_Spend', # Updated here
     nbins=40,
     color='Spend_range',
     category_orders={"Spend_range": bin_labels},
@@ -253,7 +274,7 @@ fig2 = px.histogram(
 fig2.update_layout(
     title=dict(text='Customer Spending Patterns', font=dict(color='black')),
     title_x=0.2,
-    xaxis_title='6mos Spend (₹)',
+    xaxis_title='Total Spend (₹)', # Updated label
     yaxis_title='Customers',
     xaxis=axis_style,
     yaxis=axis_style,
@@ -265,15 +286,21 @@ st.plotly_chart(fig2, use_container_width=True)
 # -----------------------------
 # State-wise Bar
 # -----------------------------
+st.markdown("### State-wise Distribution")
+st.markdown("""
+This bar chart shows the number of customers in each state and how much they spent.  
+It helps you see which states have more active or high-value buyers.
+""")
+
 if 'State' in stats.columns: 
-    geo = stats.groupby('State').agg({'Customer ID': 'count', '6mos Spend': 'sum'}) \
-        .rename(columns={'Customer ID': 'Customers'}).reset_index()
+    geo = stats.groupby('State').agg({'Customer ID': 'count', 'Total_Spend': 'sum'}) \
+        .rename(columns={'Customer ID': 'Customers'}).reset_index() # Updated here
     
     fig4 = px.bar(
         geo,
         x='State',
         y='Customers',
-        color='6mos Spend',
+        color='Total_Spend', # Updated here
         text='Customers',
         color_continuous_scale='Viridis',
         height=400
@@ -287,7 +314,7 @@ if 'State' in stats.columns:
         xaxis=axis_style,
         yaxis=axis_style,
         legend=dict(font=dict(color='black')),
-        legend_title=dict(text="6mos Spend", font=dict(color='black'))
+        legend_title=dict(text="Total Spend", font=dict(color='black')) # Updated label
     )
 
     fig4.update_coloraxes(
@@ -302,12 +329,18 @@ if 'State' in stats.columns:
 # -----------------------------
 # Orders & Spend Trends
 # -----------------------------
-time_series = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({'Orders':'sum','6mos Spend':'sum'}).reset_index()
+st.markdown("### Purchase and Spend Trends Over Time")
+st.markdown("""
+These line charts track how orders and spending change month by month.  
+They show whether our business is growing or slowing down.
+""")
+
+time_series = stats.groupby(pd.Grouper(key='Last Purchase Date', freq='M')).agg({'Orders':'sum','Total_Spend':'sum'}).reset_index() # Updated here
 col1,col2 = st.columns(2)
 with col1:
-    fig_spend = px.line(time_series, x='Last Purchase Date', y='6mos Spend', title='Total 6mos Spend Trend Over Time', markers=True)
+    fig_spend = px.line(time_series, x='Last Purchase Date', y='Total_Spend', title='Total Spend Trend Over Time', markers=True) # Updated here
     fig_spend.update_layout(
-        title=dict(text='Total 6mos Spend Trend Over Time', font=dict(color='black')),
+        title=dict(text='Total Spend Trend Over Time', font=dict(color='black')), # Updated title
         xaxis_title='Year', yaxis_title='Total Spend (₹)',
         xaxis=axis_style, yaxis=axis_style,
         legend=dict(font=dict(color='black')),
@@ -329,6 +362,12 @@ with col2:
 # -----------------------------
 # Product/Fashion Segment Trend
 # -----------------------------
+st.markdown("### Fashion Segment Performance")
+st.markdown("""
+This chart compares how different fashion segments or product categories perform over time.  
+You can see which product types are trending up or down.
+""")
+
 product_col = 'Product' if 'Product' in stats.columns else 'Fashion Segment'
 product_trend = stats.groupby([pd.Grouper(key='Last Purchase Date', freq='M'), product_col]).agg({'Orders':'sum'}).reset_index()
 fig_prod = px.line(product_trend, x='Last Purchase Date', y='Orders', color=product_col, title=f'{product_col} Orders Trend Over Time', markers=True)
@@ -344,7 +383,11 @@ st.plotly_chart(fig_prod, use_container_width=True)
 # -----------------------------
 # Download Buttons
 # -----------------------------
-st.markdown("## Download Customer Segments")
+st.markdown("### Download Reports")
+st.markdown("""
+You can download complete customer data or just specific groups like Loyal or At-Risk customers for further action or marketing campaigns.
+""")
+
 col1, col2 = st.columns(2)
 with col1:
     st.download_button('Download Full Data', data=stats.to_csv(index=False).encode('utf-8'), file_name='ltv_segmented.csv', key='full')
