@@ -8,11 +8,11 @@ import plotly.graph_objects as go
 # Page Config & Title
 # -----------------------------
 st.set_page_config(
-    page_title="Fashion LTV Dashboard",
+    page_title="Life Time Value (LTV) Dashboard for a Fashion Brand",
     page_icon="./fashion_icon.png",  
     layout="wide"
 )
-st.markdown('<h1 style="text-align: center; color: #2C3E50;">Fashion LTV Dashboard</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align: center; color: #2C3E50;">Life Time Value (LTV) Dashboard for a Fashion Brand</h1>', unsafe_allow_html=True)
 st.markdown('<style>div.block-container{padding-top:2rem;}</style>', unsafe_allow_html=True)
 
 # -----------------------------
@@ -381,21 +381,36 @@ fig_prod.update_layout(
 st.plotly_chart(fig_prod, use_container_width=True)
 
 # -----------------------------
-# Download Buttons
+# Download Buttons (Updated)
 # -----------------------------
 st.markdown("### Download Reports")
 st.markdown("""
-You can download complete customer data or just specific groups like Loyal or At-Risk customers for further action or marketing campaigns.
+You can download specific customer segments for further analysis or marketing actions.
 """)
 
-col1, col2 = st.columns(2)
-with col1:
-    st.download_button('Download Full Data', data=stats.to_csv(index=False).encode('utf-8'), file_name='ltv_segmented.csv', key='full')
-with col2:
-    st.download_button('Download Loyal Customers', data=segments_dict['Loyal'].to_csv(index=False).encode('utf-8'), file_name='loyal_customers.csv', key='loyal')
+# Arrange the remaining buttons in one clean row
+col1, col2, col3 = st.columns(3)
 
-col3, col4 = st.columns(2)
+with col1:
+    st.download_button(
+        '📈 Download Loyal Customers',
+        data=segments_dict['Loyal'].to_csv(index=False).encode('utf-8'),
+        file_name='loyal_customers.csv',
+        key='loyal'
+    )
+
+with col2:
+    st.download_button(
+        '⚠️ Download At-Risk Customers',
+        data=segments_dict['At-Risk'].to_csv(index=False).encode('utf-8'),
+        file_name='at_risk_customers.csv',
+        key='at_risk'
+    )
+
 with col3:
-    st.download_button('Download At-Risk Customers', data=segments_dict['At-Risk'].to_csv(index=False).encode('utf-8'), file_name='at_risk_customers.csv')
-with col4:
-    st.download_button('Download One-Timer Customers', data=segments_dict['One-Timer'].to_csv(index=False).encode('utf-8'), file_name='one_timer_customers.csv')
+    st.download_button(
+        '🛍️ Download One-Timer Customers',
+        data=segments_dict['One-Timer'].to_csv(index=False).encode('utf-8'),
+        file_name='one_timer_customers.csv',
+        key='one_timer'
+    )
